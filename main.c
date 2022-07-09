@@ -8,6 +8,7 @@ char *setpath(char *line);
 void getargs(char *argv[], char *line);
 char *whitespace(char *line);
 
+
 int main() {
 
     char *line = NULL;
@@ -18,18 +19,15 @@ int main() {
 
     while (1) {
         getline(&line, &len, stdin);
+
         line = whitespace(line);
         
         if (strncmp("exit", line, 4) == 0) {
             exit(0);
         }
-        //printf("s");
-
         int rc = fork();
         if (rc == 0) {
-
-            arg = strsep(&line, " \n");
-            
+            arg = strsep(&line, " \n\t\0");
             if (strcmp(arg, "path") == 0) {
                 path = line;
 
@@ -39,25 +37,32 @@ int main() {
                 argv[0] = strcat(argv[0],arg);
                 getargs(argv, line);
 
-            
-                //execv(argv[0], argv);
+                execv(argv[0], argv);
             }
-        } else wait(NULL);      
+        } else wait(NULL); 
     }
 }
 
 void getargs(char *argv[], char *line) {
     char *arg;
-    line = whitespace(line);
-    //printf("%d\n", *line);
-    //printf("%d\n", *line);
-    arg = strsep(&line, " \n");
-    printf("%d\n", *arg);
+    int i = 1;
+
+
+    while (*line != 0 && (arg = strsep(&line, " \t\n\0"))) {
+        argv[i++] = arg;
+    }
+
+
+    argv[i] = NULL; 
+    return;
 }   
 
 char *whitespace(char *line) {
-    while (*line == ' ' || *line == '\n' || *line++ == '\t')
-            ;
-    return --line;
+    while (1) {
+        if (*line != 0 && *line != 32 && *line != '\n' && *line != '\t')
+            break;
+        ++line;
+    }
+    return line;
 }
 
