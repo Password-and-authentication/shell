@@ -11,6 +11,9 @@ char *checkaccess(char *arg, char *paths[]);
 void freearr(char *argv[], size_t len);
 void addpaths(char *line, char *paths[]);
 
+const char error_message[30] = "An error has occurred\n";
+void printerr();
+
 
 int main() {
 
@@ -31,33 +34,43 @@ int main() {
         
         if (strncmp("exit", line, 4) == 0) {
             exit(0);
-        }
-        int rc = fork();
-        if (rc == 0) {
-            arg = strsep(&line, " \n\t\0");
-            if (strcmp(arg, "path") == 0) {
-                addpaths(line, paths);
-                printf("%s\n", paths[1]);
-            } else {
-                char *path;
-                if ((path = checkaccess(arg, paths))) {
-                    argv[0] = path;
+        } else if (strncmp("cd", line, 2) == 0) {
+            line += 2;
+            int end = whitespace(&line);
+            if (end)
+                printerr();
+        } else if (strncmp("path", line, 4) == 0) {
+            line += 4;
+            int end = whitespace(&line);
+            if (end)
+                *paths = NULL;
+            else addpaths(line, paths);
+            
+        } else {
+            int rc = fork();
+            if (rc == 0) {
+                if (*paths == NULL) {
+                    printf("No paths set\n");
+                    exit(0);
+                } else {
+                    arg = strsep(&line, " \n\t\0");
+                    char *path;
+                    if ((path = checkaccess(arg, paths))) {
+                        argv[0] = path;
+                    }
+                    getargs(argv, line);
+                    execv(argv[0], argv);
                 }
-                getargs(argv, line);
-                execv(argv[0], argv);     
-            }
-    
-        } else wait(NULL);
-        free(lineptr);
-        line = NULL;
-        len = 0;
+
+            } else wait(NULL);
+        }
     }
 }
 
 void addpaths(char *line, char *paths[]) {
     char *path;
-
     while (*line) {
+        whitespace(&line);
         path = strsep(&line, " \n\t");
         *paths++ = strdup(path);     
     }
@@ -108,6 +121,10 @@ void freearr(char *argv[], size_t len) {
     while (len--) {
         printf("e");
     }
+}
+
+void printerr() {
+    write(STDERR_FILENO, error_message, strlen(error_message)); 
 }
 
 
