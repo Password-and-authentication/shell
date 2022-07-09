@@ -8,6 +8,8 @@ char *setpath(char *line);
 void getargs(char *argv[], char *line);
 int whitespace(char **line);
 char *checkaccess(char *arg, char *paths[]);
+void freearr(char *argv[], size_t len);
+void addpaths(char *line, char *paths[]);
 
 
 int main() {
@@ -16,6 +18,7 @@ int main() {
     char *lineptr;
     size_t len = 0;
     char *arg;
+    char *argv[10];
     char *paths[10];
     paths[0] = strdup("/usr/bin/");
     paths[1] = strdup("/bin/");
@@ -33,25 +36,33 @@ int main() {
         if (rc == 0) {
             arg = strsep(&line, " \n\t\0");
             if (strcmp(arg, "path") == 0) {
-                
-
+                addpaths(line, paths);
+                printf("%s\n", paths[1]);
             } else {
-                char *argv[10];
                 char *path;
                 if ((path = checkaccess(arg, paths))) {
-                    //printf("%s\n", path);
                     argv[0] = path;
                 }
                 getargs(argv, line);
-                execv(argv[0], argv);
-                
+                execv(argv[0], argv);     
             }
-            
-        } else wait(NULL); 
+    
+        } else wait(NULL);
         free(lineptr);
         line = NULL;
         len = 0;
     }
+}
+
+void addpaths(char *line, char *paths[]) {
+    char *path;
+
+    while (*line) {
+        path = strsep(&line, " \n\t");
+        *paths++ = strdup(path);     
+    }
+    while ((path = *paths++))
+        strcpy(path, " ");
 }
 
 char *checkaccess(char *arg, char *paths[]) {
@@ -92,8 +103,11 @@ int whitespace(char **line) {
     return 0;
 }
 
-void freearr() {
+void freearr(char *argv[], size_t len) {
     
+    while (len--) {
+        printf("e");
+    }
 }
 
 
