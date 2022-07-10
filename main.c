@@ -23,13 +23,12 @@ int main(int argc, char *argv[]) {
 
 
     char *line = NULL;
-    char *lineptr;
     size_t len = 0;
     char *arg;
     char *args[10];
     char *paths[10];
     FILE* file = stdin;
-    paths[0] = strdup("/usr/bin/");
+    paths[0] = strdup("/usr/bin/");     // default path
     paths[1] = NULL;
 
     if (argc == 2) {
@@ -41,12 +40,13 @@ int main(int argc, char *argv[]) {
 
         if (getline(&line, &len, file) == EOF)
             break;
-        lineptr = line;
         whitespace(&line);
-        
+         
         if (strncmp("exit", line, 4) == 0) {
             exit(0);
         } else if (strncmp("cd", line, 2) == 0) {
+
+            // skip "cd"
             line += 2;
             int end = whitespace(&line);
             if (end)
@@ -59,6 +59,8 @@ int main(int argc, char *argv[]) {
             }
                 
         } else if (strncmp("path", line, 4) == 0) {
+
+            // skip "path"
             line += 4;
             int end = whitespace(&line);
             if (end)
@@ -70,6 +72,7 @@ int main(int argc, char *argv[]) {
             int n = 0;
             while (1) {
                 n++;
+                // parallel is true if there is &
                 parallel = getargs(args, &line);
 
                 int rc = fork();
@@ -85,7 +88,7 @@ int main(int argc, char *argv[]) {
                 }
                 
                 for (int i = 0; i < 10; ++i)
-                    args[i] = NULL;
+                    args[i] = NULL;         // reset
                 if (!parallel) break;
             }
             while (n--) {
@@ -99,6 +102,8 @@ void changedir(char *arg) {
     if ((chdir(arg)) < 0) printerr();
 }
 
+
+// makes a new paths list
 void addpaths(char *line, char *paths[]) {
     char *path;
     while (*line) {
@@ -109,6 +114,7 @@ void addpaths(char *line, char *paths[]) {
     *paths = NULL;
 }
 
+// checks if the program exists in any of the paths, for example "ls" exists in /usr/bin/
 char *checkaccess(char *arg, char *paths[]) {
     char *path;
     while (*paths && (path = strdup(*paths++))) {
@@ -121,10 +127,11 @@ char *checkaccess(char *arg, char *paths[]) {
     return NULL;
 }
 
+// returns true if there is a "&", 
+// which means there are multiple commands
 bool getargs(char *args[], char **line) {
     char *arg;
     bool rdirect;
-    int i = 1;
     int end = whitespace(line);
     if (!end) {
         while (**line) {
@@ -134,7 +141,8 @@ bool getargs(char *args[], char **line) {
                 return 1;
             }
             if (strncmp(arg, ">", 1) == 0) {  
-                if (rdirect) 
+
+                if (rdirect) // true if ">" was already encountered
                     printerr();
                 else {
                     if (*line != 0) {
@@ -147,11 +155,9 @@ bool getargs(char *args[], char **line) {
                 }
                 rdirect = 1;
             } else {
-                //printf("%s\n", arg);
                 *args++ = strdup(arg);
                 if (*line == NULL) break;
-                if (whitespace(line))
-                    break;
+                whitespace(line);
             }
         }
     }
@@ -159,7 +165,7 @@ bool getargs(char *args[], char **line) {
     return 0;
 }  
 
-
+// remove whitespace and return true if last argument
 int whitespace(char **line) {
     while (1) {
         if (**line == 0 || **line == EOF) return 1;
@@ -168,13 +174,6 @@ int whitespace(char **line) {
         *line += 1;
     }
     return 0;
-}
-
-void freearr(char *args[], size_t len) {
-    
-    while (len--) {
-        printf("e");
-    }
 }
 
 void printerr() {
