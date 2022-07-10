@@ -66,8 +66,14 @@ int main() {
 
                 int rc = fork();
                 if (rc == 0) {
-                    argv[0] = checkaccess(argv[0], paths);
-                    execv(argv[0], argv);
+                    if (*paths == NULL)
+                        printerr();
+                    else
+                        argv[0] = checkaccess(argv[0], paths);
+                        if (argv[0] == NULL)
+                            printerr();
+                        else
+                            execv(argv[0], argv);
                 }
                 
                 for (int i = 0; i < 10; ++i)
