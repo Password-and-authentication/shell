@@ -8,7 +8,7 @@
 
 
 char *setpath(char *line);
-void getargs(char *argv[], char *line);
+bool getargs(char *argv[], char **line);
 int whitespace(char **line);
 char *checkaccess(char *arg, char *paths[]);
 void freearr(char *argv[], size_t len);
@@ -58,25 +58,26 @@ int main() {
             else addpaths(line, paths);
             
         } else {
-            int rc = fork();
-            if (rc == 0) {
-                if (*paths == NULL) {
-                    printerr();
-                } else {
-                    arg = strsep(&line, " \n\t\0");
-                    char *path;
-                    path = checkaccess(arg, paths);
-                    if (path == NULL) {
-                        printerr();
-                    } else {
-                        argv[0] = path;
-                        getargs(argv, line);
-                        
-                        execv(argv[0], argv);
-                    }
-                }
+            bool parallel;
+            int n = 0;
+            while (1) {
+                n++;
+                parallel = getargs(argv, &line);
 
-            } else wait(NULL);
+                int rc = fork();
+                if (rc == 0) {
+                    argv[0] = checkaccess(argv[0], paths);
+                    execv(argv[0], argv);
+                }
+                
+                for (int i = 0; i < 10; ++i)
+                    argv[i] = NULL;
+                if (!parallel) break;
+            }
+            while (n--) {
+                wait(NULL);
+            }
+            printf("both ended\n");
         }
     }
 }
@@ -107,31 +108,42 @@ char *checkaccess(char *arg, char *paths[]) {
     return NULL;
 }
 
-void getargs(char *argv[], char *line) {
+bool getargs(char *argv[], char **line) {
     char *arg;
     bool rdirect;
     int i = 1;
-    int end = whitespace(&line);
+    int end = whitespace(line);
     if (!end) {
-        while (*line) {
-            arg = strsep(&line, " \n\t\0");
+        while (**line) {
+            arg = strsep(line, " \n\t\0");
+            //printf("%s\n", arg);
+            if (strcmp(arg, "&") == 0) {
+                return 1;
+            }
             if (strncmp(arg, ">", 1) == 0) {  
+                if (rdirect) 
+                    printerr();
+                else {
+                    if (*line != 0) {
 
-                if (*line != 0) {
                     close(STDOUT_FILENO);
-                    whitespace(&line);
-                    arg = strsep(&line, " \n\t");
+                    whitespace(line);
+                    arg = strsep(line, " \n\t");
                     open(arg, O_RDWR | O_CREAT | O_TRUNC, S_IRWXU);
+                    }
                 }
+                rdirect = 1;
             } else {
                 //printf("%s\n", arg);
-                *++argv = strdup(arg);
-                whitespace(&line);
+                *argv++ = strdup(arg);
+                whitespace(line);
             }
         }
     }
     *++argv = NULL;
-}   
+    return 0;
+}  
+
 
 int whitespace(char **line) {
     while (1) {
@@ -153,6 +165,3 @@ void freearr(char *argv[], size_t len) {
 void printerr() {
     write(STDERR_FILENO, error_message, strlen(error_message)); 
 }
-
-
-
