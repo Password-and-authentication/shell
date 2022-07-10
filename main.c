@@ -4,6 +4,8 @@
 #include <sys/wait.h>
 #include <string.h>
 #include <stdbool.h>
+#include <fcntl.h>
+
 
 char *setpath(char *line);
 void getargs(char *argv[], char *line);
@@ -113,8 +115,19 @@ void getargs(char *argv[], char *line) {
     if (!end) {
         while (*line) {
             arg = strsep(&line, " \n\t\0");
-            *++argv = strdup(arg);
-            whitespace(&line);
+            if (strncmp(arg, ">", 1) == 0) {  
+
+                if (*line != 0) {
+                    close(STDOUT_FILENO);
+                    whitespace(&line);
+                    arg = strsep(&line, " \n\t");
+                    open(arg, O_RDWR | O_CREAT | O_TRUNC, S_IRWXU);
+                }
+            } else {
+                //printf("%s\n", arg);
+                *++argv = strdup(arg);
+                whitespace(&line);
+            }
         }
     }
     *++argv = NULL;
