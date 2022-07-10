@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <string.h>
+#include <stdbool.h>
 
 char *setpath(char *line);
 void getargs(char *argv[], char *line);
@@ -10,6 +11,7 @@ int whitespace(char **line);
 char *checkaccess(char *arg, char *paths[]);
 void freearr(char *argv[], size_t len);
 void addpaths(char *line, char *paths[]);
+void changedir(char *line);
 
 const char error_message[30] = "An error has occurred\n";
 void printerr();
@@ -39,6 +41,13 @@ int main() {
             int end = whitespace(&line);
             if (end)
                 printerr();
+            else {
+                arg = strsep(&line, " \n\t");
+                if (*line != 0) 
+                    printerr();
+                else changedir(arg);
+            }
+                
         } else if (strncmp("path", line, 4) == 0) {
             line += 4;
             int end = whitespace(&line);
@@ -50,21 +59,28 @@ int main() {
             int rc = fork();
             if (rc == 0) {
                 if (*paths == NULL) {
-                    printf("No paths set\n");
-                    exit(0);
+                    printerr();
                 } else {
                     arg = strsep(&line, " \n\t\0");
                     char *path;
-                    if ((path = checkaccess(arg, paths))) {
+                    path = checkaccess(arg, paths);
+                    if (path == NULL) {
+                        printerr();
+                    } else {
                         argv[0] = path;
+                        getargs(argv, line);
+                        printf("%s\n", argv[1]);
+                        execv(argv[0], argv);
                     }
-                    getargs(argv, line);
-                    execv(argv[0], argv);
                 }
 
             } else wait(NULL);
         }
     }
+}
+
+void changedir(char *arg) {
+    if ((chdir(arg)) < 0) printerr();
 }
 
 void addpaths(char *line, char *paths[]) {
@@ -74,15 +90,13 @@ void addpaths(char *line, char *paths[]) {
         path = strsep(&line, " \n\t");
         *paths++ = strdup(path);     
     }
-    while ((path = *paths++))
-        strcpy(path, " ");
+    *++paths = NULL;
 }
 
 char *checkaccess(char *arg, char *paths[]) {
     char *path;
-    while ((path = strdup(*paths++))) {
+    while (*paths && (path = strdup(*paths++))) {
         strcat(path, arg);
-        //printf("%s\n", path);
         if (access(path, X_OK) == 0) {
             return path;
         }
@@ -93,17 +107,18 @@ char *checkaccess(char *arg, char *paths[]) {
 
 void getargs(char *argv[], char *line) {
     char *arg;
+    bool rdirect;
     int i = 1;
     int end = whitespace(&line);
     if (!end) {
         while (*line) {
-            arg = strsep(&line, "> \n\t\0");
-            argv[i++] = strdup(arg);
+            arg = strsep(&line, " \n\t\0");
+
+            *argv++ = strdup(arg);
             whitespace(&line);
         }
     }
-
-    argv[i] = NULL;
+    *++argv = NULL;
 }   
 
 int whitespace(char **line) {
