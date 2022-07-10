@@ -69,7 +69,7 @@ int main() {
                     } else {
                         argv[0] = path;
                         getargs(argv, line);
-                        printf("%s\n", argv[1]);
+                        
                         execv(argv[0], argv);
                     }
                 }
@@ -113,8 +113,7 @@ void getargs(char *argv[], char *line) {
     if (!end) {
         while (*line) {
             arg = strsep(&line, " \n\t\0");
-
-            *argv++ = strdup(arg);
+            *++argv = strdup(arg);
             whitespace(&line);
         }
     }
