@@ -8,10 +8,10 @@
 
 
 char *setpath(char *line);
-bool getargs(char *argv[], char **line);
+bool getargs(char *args[], char **line);
 int whitespace(char **line);
 char *checkaccess(char *arg, char *paths[]);
-void freearr(char *argv[], size_t len);
+void freearr(char *args[], size_t len);
 void addpaths(char *line, char *paths[]);
 void changedir(char *line);
 
@@ -19,20 +19,28 @@ const char error_message[30] = "An error has occurred\n";
 void printerr();
 
 
-int main() {
+int main(int argc, char *argv[]) {
+
 
     char *line = NULL;
     char *lineptr;
     size_t len = 0;
     char *arg;
-    char *argv[10];
+    char *args[10];
     char *paths[10];
+    FILE* file = stdin;
     paths[0] = strdup("/usr/bin/");
-    paths[1] = strdup("/bin/");
-    paths[2] = NULL;
+    paths[1] = NULL;
+
+    if (argc == 2) {
+        file = fopen(argv[1], "r");
+    }
 
     while (1) {
-        getline(&line, &len, stdin);
+        if (argc == 1) printf("wish> ");
+
+        if (getline(&line, &len, file) == EOF)
+            break;
         lineptr = line;
         whitespace(&line);
         
@@ -62,28 +70,27 @@ int main() {
             int n = 0;
             while (1) {
                 n++;
-                parallel = getargs(argv, &line);
+                parallel = getargs(args, &line);
 
                 int rc = fork();
                 if (rc == 0) {
                     if (*paths == NULL)
                         printerr();
                     else
-                        argv[0] = checkaccess(argv[0], paths);
-                        if (argv[0] == NULL)
+                        args[0] = checkaccess(args[0], paths);
+                        if (args[0] == NULL)
                             printerr();
                         else
-                            execv(argv[0], argv);
+                            execv(args[0], args);
                 }
                 
                 for (int i = 0; i < 10; ++i)
-                    argv[i] = NULL;
+                    args[i] = NULL;
                 if (!parallel) break;
             }
             while (n--) {
                 wait(NULL);
             }
-            printf("both ended\n");
         }
     }
 }
@@ -99,7 +106,7 @@ void addpaths(char *line, char *paths[]) {
         path = strsep(&line, " \n\t");
         *paths++ = strdup(path);     
     }
-    *++paths = NULL;
+    *paths = NULL;
 }
 
 char *checkaccess(char *arg, char *paths[]) {
@@ -114,7 +121,7 @@ char *checkaccess(char *arg, char *paths[]) {
     return NULL;
 }
 
-bool getargs(char *argv[], char **line) {
+bool getargs(char *args[], char **line) {
     char *arg;
     bool rdirect;
     int i = 1;
@@ -141,19 +148,21 @@ bool getargs(char *argv[], char **line) {
                 rdirect = 1;
             } else {
                 //printf("%s\n", arg);
-                *argv++ = strdup(arg);
-                whitespace(line);
+                *args++ = strdup(arg);
+                if (*line == NULL) break;
+                if (whitespace(line))
+                    break;
             }
         }
     }
-    *++argv = NULL;
+    *++args = NULL;
     return 0;
 }  
 
 
 int whitespace(char **line) {
     while (1) {
-        if (**line == 0) return 1;
+        if (**line == 0 || **line == EOF) return 1;
         if (**line != ' ' && **line != '\n' && **line != '\t')
                 break;
         *line += 1;
@@ -161,7 +170,7 @@ int whitespace(char **line) {
     return 0;
 }
 
-void freearr(char *argv[], size_t len) {
+void freearr(char *args[], size_t len) {
     
     while (len--) {
         printf("e");
